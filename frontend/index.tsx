@@ -54,7 +54,9 @@ function App() {
 
   const finishTime = `${finishHourFormatted}:${finishMinuteFormatted}:${finishSecondFormatted}`;
 
-  function clear() {
+  const sound = bg.useSound("/static/sound.wav");
+
+  async function clear() {
     hours.clear();
     minutes.clear();
     seconds.clear();
@@ -83,6 +85,8 @@ function App() {
 
             setTimerStatus(TimerStatusEnum.working);
             setTimerPayload(payload);
+
+            sound.play();
           }}
         >
           <div data-display="flex" data-cross="end" data-gap="12">
