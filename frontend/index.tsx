@@ -16,6 +16,7 @@ function addLeadingZero(value: number) {
 enum TimerStatusEnum {
   idle = "idle",
   working = "working",
+  finished = "finished",
 }
 
 type Context = {
@@ -33,98 +34,108 @@ type Events =
   | { type: "UPDATE_SECONDS"; value: bg.Seconds["value"] }
   | { type: "TICK" };
 
-const timerMachine = createMachine<Context, Events>({
-  id: "timer",
-  initial: "idle",
-  context: {
-    hours: new bg.Hours(HoursInput.default),
-    minutes: new bg.Minutes(MinutesInput.default),
-    seconds: new bg.Seconds(SecondsInput.default),
-    durationInMs: 0,
-    scheduledAtTimestamp: null,
-  },
-  states: {
-    idle: {
-      on: {
-        START: {
-          cond: (context) => {
-            return (
+const timerMachine = createMachine<Context, Events>(
+  {
+    id: "timer",
+    initial: "idle",
+    context: {
+      hours: new bg.Hours(HoursInput.default),
+      minutes: new bg.Minutes(MinutesInput.default),
+      seconds: new bg.Seconds(SecondsInput.default),
+      durationInMs: 0,
+      scheduledAtTimestamp: null,
+    },
+    states: {
+      idle: {
+        on: {
+          START: {
+            cond: (context) =>
               context.hours.value > 0 ||
               context.minutes.value > 0 ||
-              context.seconds.value > 0
-            );
+              context.seconds.value > 0,
+            target: "working",
+            actions: [
+              assign((_, event) => ({
+                scheduledAtTimestamp: event.scheduledAtTimestamp,
+              })),
+              "playSound",
+            ],
           },
-          target: "working",
-          actions: [
-            assign((_, event) => ({
-              scheduledAtTimestamp: event.scheduledAtTimestamp,
+          CLEAR: {
+            target: "idle",
+            actions: assign((_context, _event) => ({
+              hours: new bg.Hours(HoursInput.default),
+              minutes: new bg.Minutes(MinutesInput.default),
+              seconds: new bg.Seconds(SecondsInput.default),
+              durationInMs: 0,
             })),
-            async () => {
-              const audio = new Audio("/static/sound.wav");
-              await audio.play();
-            },
-          ],
-        },
-        CLEAR: {
-          target: "idle",
-          actions: assign((_context, _event) => ({
-            hours: new bg.Hours(HoursInput.default),
-            minutes: new bg.Minutes(MinutesInput.default),
-            seconds: new bg.Seconds(SecondsInput.default),
-            durationInMs: 0,
-          })),
-        },
-        UPDATE_HOURS: {
-          target: "idle",
-          actions: assign((context, event) => ({
-            hours: new bg.Hours(isNaN(event.value) ? 0 : event.value),
-            durationInMs:
-              new bg.Hours(isNaN(event.value) ? 0 : event.value).toMs() +
-              context.minutes.toMs() +
-              context.seconds.toMs(),
-          })),
-        },
-        UPDATE_MINUTES: {
-          target: "idle",
-          actions: assign((context, event) => ({
-            minutes: new bg.Minutes(isNaN(event.value) ? 0 : event.value),
-            durationInMs:
-              context.hours.toMs() +
-              new bg.Minutes(isNaN(event.value) ? 0 : event.value).toMs() +
-              context.seconds.toMs(),
-          })),
-        },
-        UPDATE_SECONDS: {
-          target: "idle",
-          actions: assign((context, event) => ({
-            seconds: new bg.Seconds(isNaN(event.value) ? 0 : event.value),
-            durationInMs:
-              context.hours.toMs() +
-              context.minutes.toMs() +
-              new bg.Seconds(isNaN(event.value) ? 0 : event.value).toMs(),
-          })),
+          },
+          UPDATE_HOURS: {
+            target: "idle",
+            actions: assign((context, event) => ({
+              hours: new bg.Hours(isNaN(event.value) ? 0 : event.value),
+              durationInMs:
+                new bg.Hours(isNaN(event.value) ? 0 : event.value).toMs() +
+                context.minutes.toMs() +
+                context.seconds.toMs(),
+            })),
+          },
+          UPDATE_MINUTES: {
+            target: "idle",
+            actions: assign((context, event) => ({
+              minutes: new bg.Minutes(isNaN(event.value) ? 0 : event.value),
+              durationInMs:
+                context.hours.toMs() +
+                new bg.Minutes(isNaN(event.value) ? 0 : event.value).toMs() +
+                context.seconds.toMs(),
+            })),
+          },
+          UPDATE_SECONDS: {
+            target: "idle",
+            actions: assign((context, event) => ({
+              seconds: new bg.Seconds(isNaN(event.value) ? 0 : event.value),
+              durationInMs:
+                context.hours.toMs() +
+                context.minutes.toMs() +
+                new bg.Seconds(isNaN(event.value) ? 0 : event.value).toMs(),
+            })),
+          },
         },
       },
-    },
-    working: {
-      invoke: {
-        src: () => (schedule) => {
-          const interval = setInterval(() => schedule("TICK"), 1000);
+      working: {
+        invoke: {
+          src: () => (schedule) => {
+            const interval = setInterval(() => schedule("TICK"), 1000);
 
-          return () => clearInterval(interval);
+            return () => clearInterval(interval);
+          },
         },
+        on: {
+          TICK: {
+            target: "working",
+            actions: assign((context) => ({
+              durationInMs: context.durationInMs - 1000,
+            })),
+          },
+        },
+        always: [
+          { target: "finished", cond: (context) => context.durationInMs <= 0 },
+        ],
       },
-      on: {
-        TICK: {
-          target: "working",
-          actions: assign((context) => ({
-            durationInMs: context.durationInMs - 1000,
-          })),
-        },
+      finished: {
+        onEntry: "playSound",
       },
     },
   },
-});
+  {
+    actions: {
+      playSound: async () => {
+        const audio = new Audio("/static/sound.wav");
+        await audio.play();
+      },
+    },
+  }
+);
 
 function App() {
   const [state, send] = useMachine(timerMachine);
@@ -272,6 +283,8 @@ function App() {
       {state.value === TimerStatusEnum.working && (
         <div>{state.context.durationInMs}</div>
       )}
+
+      {state.value === TimerStatusEnum.finished && <div>finished</div>}
     </main>
   );
 }
