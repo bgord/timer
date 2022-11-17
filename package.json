@@ -37,9 +37,11 @@
     "@bgord/design": "^0.27.48",
     "@bgord/frontend": "github:bgord/bgord-frontend",
     "@bgord/node": "^0.58.78",
+    "@xstate/react": "^3.0.1",
     "lodash": "^4.17.21",
     "preact": "^10.6.4",
     "react": "npm:@preact/compat@^17.0.3",
-    "react-dom": "npm:@preact/compat@^17.0.3"
+    "react-dom": "npm:@preact/compat@^17.0.3",
+    "xstate": "^4.34.0"
   }
 }

@@ -1,5 +1,6 @@
 import { h, render } from "preact";
-import { useState } from "preact/hooks";
+import { createMachine, assign } from "xstate";
+import { useMachine } from "@xstate/react";
 import * as bg from "@bgord/frontend";
 
 type MilisecondType = number;
@@ -17,31 +18,120 @@ enum TimerStatusEnum {
   working = "working",
 }
 
-type TimerPayloadType = {
+type Context = {
   hours: bg.Hours;
   minutes: bg.Minutes;
   seconds: bg.Seconds;
-  scheduledAtTimestamp: number;
   durationInMs: MilisecondType;
+  scheduledAtTimestamp: MilisecondType | null;
 };
+type Events =
+  | { type: "START"; scheduledAtTimestamp: MilisecondType }
+  | { type: "CLEAR" }
+  | { type: "UPDATE_HOURS"; value: bg.Hours["value"] }
+  | { type: "UPDATE_MINUTES"; value: bg.Minutes["value"] }
+  | { type: "UPDATE_SECONDS"; value: bg.Seconds["value"] }
+  | { type: "TICK" };
+
+const timerMachine = createMachine<Context, Events>({
+  id: "timer",
+  initial: "idle",
+  context: {
+    hours: new bg.Hours(HoursInput.default),
+    minutes: new bg.Minutes(MinutesInput.default),
+    seconds: new bg.Seconds(SecondsInput.default),
+    durationInMs: 0,
+    scheduledAtTimestamp: null,
+  },
+  states: {
+    idle: {
+      on: {
+        START: {
+          cond: (context) => {
+            return (
+              context.hours.value > 0 ||
+              context.minutes.value > 0 ||
+              context.seconds.value > 0
+            );
+          },
+          target: "working",
+          actions: [
+            assign((_, event) => ({
+              scheduledAtTimestamp: event.scheduledAtTimestamp,
+            })),
+            async () => {
+              const audio = new Audio("/static/sound.wav");
+              await audio.play();
+            },
+          ],
+        },
+        CLEAR: {
+          target: "idle",
+          actions: assign((_context, _event) => ({
+            hours: new bg.Hours(HoursInput.default),
+            minutes: new bg.Minutes(MinutesInput.default),
+            seconds: new bg.Seconds(SecondsInput.default),
+            durationInMs: 0,
+          })),
+        },
+        UPDATE_HOURS: {
+          target: "idle",
+          actions: assign((context, event) => ({
+            hours: new bg.Hours(isNaN(event.value) ? 0 : event.value),
+            durationInMs:
+              new bg.Hours(isNaN(event.value) ? 0 : event.value).toMs() +
+              context.minutes.toMs() +
+              context.seconds.toMs(),
+          })),
+        },
+        UPDATE_MINUTES: {
+          target: "idle",
+          actions: assign((context, event) => ({
+            minutes: new bg.Minutes(isNaN(event.value) ? 0 : event.value),
+            durationInMs:
+              context.hours.toMs() +
+              new bg.Minutes(isNaN(event.value) ? 0 : event.value).toMs() +
+              context.seconds.toMs(),
+          })),
+        },
+        UPDATE_SECONDS: {
+          target: "idle",
+          actions: assign((context, event) => ({
+            seconds: new bg.Seconds(isNaN(event.value) ? 0 : event.value),
+            durationInMs:
+              context.hours.toMs() +
+              context.minutes.toMs() +
+              new bg.Seconds(isNaN(event.value) ? 0 : event.value).toMs(),
+          })),
+        },
+      },
+    },
+    working: {
+      invoke: {
+        src: () => (schedule) => {
+          const interval = setInterval(() => schedule("TICK"), 1000);
+
+          return () => clearInterval(interval);
+        },
+      },
+      on: {
+        TICK: {
+          target: "working",
+          actions: assign((context) => ({
+            durationInMs: context.durationInMs - 1000,
+          })),
+        },
+      },
+    },
+  },
+});
 
 function App() {
-  const [timerStatus, setTimerStatus] = useState<TimerStatusEnum>(
-    TimerStatusEnum.idle
-  );
-  const [_, setTimerPayload] = useState<TimerPayloadType | null>(null);
+  const [state, send] = useMachine(timerMachine);
 
   const timestamp = bg.useCurrentTimestamp();
 
-  const hours = bg.useField<bg.Hours>(new bg.Hours(0));
-  const minutes = bg.useField<bg.Minutes>(new bg.Minutes(0));
-  const seconds = bg.useField<bg.Seconds>(new bg.Seconds(0));
-
-  const durationInMs: MilisecondType =
-    hours.value.toMs() + minutes.value.toMs() + seconds.value.toMs();
-
-  const finishDate = new Date(timestamp + durationInMs);
-
+  const finishDate = new Date(timestamp + state.context.durationInMs);
   const finishHourFormatted = String(finishDate.getHours()).padStart(2, "0");
   const finishMinuteFormatted = String(finishDate.getMinutes()).padStart(
     2,
@@ -54,17 +144,9 @@ function App() {
 
   const finishTime = `${finishHourFormatted}:${finishMinuteFormatted}:${finishSecondFormatted}`;
 
-  const sound = bg.useSound("/static/sound.wav");
-
-  async function clear() {
-    hours.clear();
-    minutes.clear();
-    seconds.clear();
-  }
-
   return (
     <main data-display="flex" data-direction="column">
-      {timerStatus === TimerStatusEnum.idle && (
+      {state.value === TimerStatusEnum.idle && (
         <form
           data-display="flex"
           data-direction="column"
@@ -74,19 +156,7 @@ function App() {
           data-max-width="768"
           onSubmit={(event) => {
             event.preventDefault();
-
-            const payload = {
-              hours: hours.value,
-              minutes: minutes.value,
-              seconds: seconds.value,
-              scheduledAtTimestamp: timestamp,
-              durationInMs,
-            };
-
-            setTimerStatus(TimerStatusEnum.working);
-            setTimerPayload(payload);
-
-            sound.play();
+            send({ type: "START", scheduledAtTimestamp: timestamp });
           }}
         >
           <div data-display="flex" data-cross="end" data-gap="12">
@@ -101,9 +171,12 @@ function App() {
                 placeholder={HoursInput.placeholder}
                 type="number"
                 required
-                value={addLeadingZero(hours.value.value)}
+                value={addLeadingZero(state.context.hours.value)}
                 onInput={(event) =>
-                  hours.set(new bg.Hours(event.currentTarget.valueAsNumber))
+                  send({
+                    type: "UPDATE_HOURS",
+                    value: event.currentTarget.valueAsNumber,
+                  })
                 }
                 min={HoursInput.min}
                 max={HoursInput.max}
@@ -124,9 +197,12 @@ function App() {
                 placeholder={MinutesInput.placeholder}
                 type="number"
                 required
-                value={addLeadingZero(minutes.value.value)}
+                value={addLeadingZero(state.context.minutes.value)}
                 onInput={(event) =>
-                  minutes.set(new bg.Minutes(event.currentTarget.valueAsNumber))
+                  send({
+                    type: "UPDATE_MINUTES",
+                    value: event.currentTarget.valueAsNumber,
+                  })
                 }
                 min={MinutesInput.min}
                 max={MinutesInput.max}
@@ -147,9 +223,12 @@ function App() {
                 placeholder={SecondsInput.placeholder}
                 type="number"
                 required
-                value={addLeadingZero(seconds.value.value)}
+                value={addLeadingZero(state.context.seconds.value)}
                 onInput={(event) =>
-                  seconds.set(new bg.Seconds(event.currentTarget.valueAsNumber))
+                  send({
+                    type: "UPDATE_SECONDS",
+                    value: event.currentTarget.valueAsNumber,
+                  })
                 }
                 min={SecondsInput.min}
                 max={SecondsInput.max}
@@ -178,14 +257,20 @@ function App() {
               data-variant="bare"
               type="button"
               data-width="100%"
-              onClick={clear}
+              onClick={() => send({ type: "CLEAR" })}
             >
               Clear
             </button>
           </div>
 
-          {durationInMs > 0 && <div>The timer will end at {finishTime}</div>}
+          {state.context.durationInMs > 0 && (
+            <div>The timer will end at {finishTime}</div>
+          )}
         </form>
+      )}
+
+      {state.value === TimerStatusEnum.working && (
+        <div>{state.context.durationInMs}</div>
       )}
     </main>
   );
