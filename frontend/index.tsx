@@ -73,9 +73,21 @@ const timerMachine = createMachine<Context, Events>(
           UPDATE_HOURS: {
             target: "idle",
             actions: assign((context, event) => ({
-              hours: new bg.Hours(isNaN(event.value) ? 0 : event.value),
+              hours: new bg.Hours(
+                isNaN(event.value)
+                  ? HoursInput.min
+                  : event.value > HoursInput.max
+                  ? HoursInput.max
+                  : event.value
+              ),
               durationInMs:
-                new bg.Hours(isNaN(event.value) ? 0 : event.value).toMs() +
+                new bg.Hours(
+                  isNaN(event.value)
+                    ? HoursInput.min
+                    : event.value > HoursInput.max
+                    ? HoursInput.max
+                    : event.value
+                ).toMs() +
                 context.minutes.toMs() +
                 context.seconds.toMs(),
             })),
@@ -83,21 +95,45 @@ const timerMachine = createMachine<Context, Events>(
           UPDATE_MINUTES: {
             target: "idle",
             actions: assign((context, event) => ({
-              minutes: new bg.Minutes(isNaN(event.value) ? 0 : event.value),
+              minutes: new bg.Minutes(
+                isNaN(event.value)
+                  ? MinutesInput.min
+                  : event.value > MinutesInput.max
+                  ? MinutesInput.max
+                  : event.value
+              ),
               durationInMs:
                 context.hours.toMs() +
-                new bg.Minutes(isNaN(event.value) ? 0 : event.value).toMs() +
+                new bg.Minutes(
+                  isNaN(event.value)
+                    ? MinutesInput.min
+                    : event.value > MinutesInput.max
+                    ? MinutesInput.max
+                    : event.value
+                ).toMs() +
                 context.seconds.toMs(),
             })),
           },
           UPDATE_SECONDS: {
             target: "idle",
             actions: assign((context, event) => ({
-              seconds: new bg.Seconds(isNaN(event.value) ? 0 : event.value),
+              seconds: new bg.Seconds(
+                isNaN(event.value)
+                  ? SecondsInput.min
+                  : event.value > SecondsInput.max
+                  ? SecondsInput.max
+                  : event.value
+              ),
               durationInMs:
                 context.hours.toMs() +
                 context.minutes.toMs() +
-                new bg.Seconds(isNaN(event.value) ? 0 : event.value).toMs(),
+                new bg.Seconds(
+                  isNaN(event.value)
+                    ? SecondsInput.min
+                    : event.value > SecondsInput.max
+                    ? SecondsInput.max
+                    : event.value
+                ).toMs(),
             })),
           },
         },
