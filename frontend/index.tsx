@@ -9,10 +9,6 @@ const HoursInput = { default: 0, min: 0, max: 23, placeholder: "00" };
 const MinutesInput = { default: 0, min: 0, max: 59, placeholder: "00" };
 const SecondsInput = { default: 0, min: 0, max: 59, placeholder: "00" };
 
-function addLeadingZeroToNumber(value: number) {
-  return String(value).padStart(2, "0");
-}
-
 enum TimerStatusEnum {
   idle = "idle",
   working = "working",
@@ -180,18 +176,9 @@ function App() {
 
   const timestamp = bg.useCurrentTimestamp();
 
-  const finishDate = new Date(timestamp + state.context.durationInMs);
-  const finishHourFormatted = String(finishDate.getHours()).padStart(2, "0");
-  const finishMinuteFormatted = String(finishDate.getMinutes()).padStart(
-    2,
-    "0"
+  const finishTime = bg.DateFormatter.clock(
+    timestamp + state.context.durationInMs
   );
-  const finishSecondFormatted = String(finishDate.getSeconds()).padStart(
-    2,
-    "0"
-  );
-
-  const finishTime = `${finishHourFormatted}:${finishMinuteFormatted}:${finishSecondFormatted}`;
 
   return (
     <main data-display="flex" data-direction="column">
@@ -220,7 +207,7 @@ function App() {
                 placeholder={HoursInput.placeholder}
                 type="number"
                 required
-                value={addLeadingZeroToNumber(state.context.hours.value)}
+                value={bg.DateFormatter._pad(state.context.hours.value)}
                 onInput={(event) =>
                   send({
                     type: "UPDATE_HOURS",
@@ -246,7 +233,7 @@ function App() {
                 placeholder={MinutesInput.placeholder}
                 type="number"
                 required
-                value={addLeadingZeroToNumber(state.context.minutes.value)}
+                value={bg.DateFormatter._pad(state.context.minutes.value)}
                 onInput={(event) =>
                   send({
                     type: "UPDATE_MINUTES",
@@ -272,7 +259,7 @@ function App() {
                 placeholder={SecondsInput.placeholder}
                 type="number"
                 required
-                value={addLeadingZeroToNumber(state.context.seconds.value)}
+                value={bg.DateFormatter._pad(state.context.seconds.value)}
                 onInput={(event) =>
                   send({
                     type: "UPDATE_SECONDS",
