@@ -9,7 +9,7 @@ const HoursInput = { default: 0, min: 0, max: 23, placeholder: "00" };
 const MinutesInput = { default: 0, min: 0, max: 59, placeholder: "00" };
 const SecondsInput = { default: 0, min: 0, max: 59, placeholder: "00" };
 
-function addLeadingZero(value: number) {
+function addLeadingZeroToNumber(value: number) {
   return String(value).padStart(2, "0");
 }
 
@@ -49,10 +49,7 @@ const timerMachine = createMachine<Context, Events>(
       idle: {
         on: {
           START: {
-            cond: (context) =>
-              context.hours.value > 0 ||
-              context.minutes.value > 0 ||
-              context.seconds.value > 0,
+            cond: "isTimeNotEmpty",
             target: "working",
             actions: [
               assign((_, event) => ({
@@ -61,15 +58,9 @@ const timerMachine = createMachine<Context, Events>(
               "playSound",
             ],
           },
-          CLEAR: {
-            target: "idle",
-            actions: assign((_context, _event) => ({
-              hours: new bg.Hours(HoursInput.default),
-              minutes: new bg.Minutes(MinutesInput.default),
-              seconds: new bg.Seconds(SecondsInput.default),
-              durationInMs: 0,
-            })),
-          },
+
+          CLEAR: { target: "idle", actions: "clearTimer" },
+
           UPDATE_HOURS: {
             target: "idle",
             actions: assign((context, event) => ({
@@ -92,6 +83,7 @@ const timerMachine = createMachine<Context, Events>(
                 context.seconds.toMs(),
             })),
           },
+
           UPDATE_MINUTES: {
             target: "idle",
             actions: assign((context, event) => ({
@@ -114,6 +106,7 @@ const timerMachine = createMachine<Context, Events>(
                 context.seconds.toMs(),
             })),
           },
+
           UPDATE_SECONDS: {
             target: "idle",
             actions: assign((context, event) => ({
@@ -138,37 +131,46 @@ const timerMachine = createMachine<Context, Events>(
           },
         },
       },
-      working: {
-        invoke: {
-          src: () => (schedule) => {
-            const interval = setInterval(() => schedule("TICK"), 1000);
 
-            return () => clearInterval(interval);
-          },
-        },
-        on: {
-          TICK: {
-            target: "working",
-            actions: assign((context) => ({
-              durationInMs: context.durationInMs - 1000,
-            })),
-          },
-        },
-        always: [
-          { target: "finished", cond: (context) => context.durationInMs <= 0 },
-        ],
+      working: {
+        invoke: { src: "tick" },
+        on: { TICK: { target: "working", actions: "decreaseTime" } },
+        always: [{ target: "finished", cond: "hasTimeElapsed" }],
       },
-      finished: {
-        onEntry: "playSound",
-      },
+
+      finished: { onEntry: "playSound" },
     },
   },
   {
     actions: {
-      playSound: async () => {
-        const audio = new Audio("/static/sound.wav");
-        await audio.play();
+      playSound: () => new Audio("/static/sound.wav").play(),
+
+      clearTimer: assign((_context, _event) => ({
+        hours: new bg.Hours(HoursInput.default),
+        minutes: new bg.Minutes(MinutesInput.default),
+        seconds: new bg.Seconds(SecondsInput.default),
+        durationInMs: 0,
+      })),
+
+      decreaseTime: assign((context) => ({
+        durationInMs: context.durationInMs - 1000,
+      })),
+    },
+
+    services: {
+      tick: () => (schedule) => {
+        const interval = setInterval(() => schedule("TICK"), 1000);
+        return () => clearInterval(interval);
       },
+    },
+
+    guards: {
+      hasTimeElapsed: (context) => context.durationInMs <= 0,
+
+      isTimeNotEmpty: (context) =>
+        context.hours.value > 0 ||
+        context.minutes.value > 0 ||
+        context.seconds.value > 0,
     },
   }
 );
@@ -218,7 +220,7 @@ function App() {
                 placeholder={HoursInput.placeholder}
                 type="number"
                 required
-                value={addLeadingZero(state.context.hours.value)}
+                value={addLeadingZeroToNumber(state.context.hours.value)}
                 onInput={(event) =>
                   send({
                     type: "UPDATE_HOURS",
@@ -244,7 +246,7 @@ function App() {
                 placeholder={MinutesInput.placeholder}
                 type="number"
                 required
-                value={addLeadingZero(state.context.minutes.value)}
+                value={addLeadingZeroToNumber(state.context.minutes.value)}
                 onInput={(event) =>
                   send({
                     type: "UPDATE_MINUTES",
@@ -270,7 +272,7 @@ function App() {
                 placeholder={SecondsInput.placeholder}
                 type="number"
                 required
-                value={addLeadingZero(state.context.seconds.value)}
+                value={addLeadingZeroToNumber(state.context.seconds.value)}
                 onInput={(event) =>
                   send({
                     type: "UPDATE_SECONDS",
