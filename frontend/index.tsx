@@ -61,13 +61,7 @@ const timerMachine = createMachine<Context, Events>(
             target: "idle",
             actions: [
               assign((_, event) => ({
-                hours: new bg.Hours(
-                  isNaN(event.value)
-                    ? HoursInput.min
-                    : event.value > HoursInput.max
-                    ? HoursInput.max
-                    : event.value
-                ),
+                hours: new bg.Hours(valueExtractor(event.value, HoursInput)),
               })),
               "updateDurationInMs",
             ],
@@ -78,11 +72,7 @@ const timerMachine = createMachine<Context, Events>(
             actions: [
               assign((_, event) => ({
                 minutes: new bg.Minutes(
-                  isNaN(event.value)
-                    ? MinutesInput.min
-                    : event.value > MinutesInput.max
-                    ? MinutesInput.max
-                    : event.value
+                  valueExtractor(event.value, MinutesInput)
                 ),
               })),
               "updateDurationInMs",
@@ -94,11 +84,7 @@ const timerMachine = createMachine<Context, Events>(
             actions: [
               assign((_, event) => ({
                 seconds: new bg.Seconds(
-                  isNaN(event.value)
-                    ? SecondsInput.min
-                    : event.value > SecondsInput.max
-                    ? SecondsInput.max
-                    : event.value
+                  valueExtractor(event.value, SecondsInput)
                 ),
               })),
               "updateDurationInMs",
@@ -162,7 +148,7 @@ function App() {
 
   const timestamp = bg.useCurrentTimestamp();
 
-  const finishTime = bg.DateFormatter.clock(
+  const estimatedFinishTime = bg.DateFormatter.clock(
     timestamp + state.context.durationInMs
   );
 
@@ -286,7 +272,7 @@ function App() {
           </div>
 
           {state.context.durationInMs > 0 && (
-            <div>The timer will end at {finishTime}</div>
+            <div>The timer will end at {estimatedFinishTime}</div>
           )}
         </form>
       )}
@@ -298,6 +284,17 @@ function App() {
       {state.value === TimerStatusEnum.finished && <div>finished</div>}
     </main>
   );
+}
+
+function valueExtractor(
+  value: number,
+  input: typeof HoursInput | typeof MinutesInput | typeof SecondsInput
+) {
+  if (isNaN(value)) return input.min;
+
+  if (value > input.max) return input.max;
+
+  return value;
 }
 
 render(<App />, document.querySelector("#root") as Element);
