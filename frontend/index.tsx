@@ -59,71 +59,50 @@ const timerMachine = createMachine<Context, Events>(
 
           UPDATE_HOURS: {
             target: "idle",
-            actions: assign((context, event) => ({
-              hours: new bg.Hours(
-                isNaN(event.value)
-                  ? HoursInput.min
-                  : event.value > HoursInput.max
-                  ? HoursInput.max
-                  : event.value
-              ),
-              durationInMs:
-                new bg.Hours(
+            actions: [
+              assign((_, event) => ({
+                hours: new bg.Hours(
                   isNaN(event.value)
                     ? HoursInput.min
                     : event.value > HoursInput.max
                     ? HoursInput.max
                     : event.value
-                ).toMs() +
-                context.minutes.toMs() +
-                context.seconds.toMs(),
-            })),
+                ),
+              })),
+              "updateDurationInMs",
+            ],
           },
 
           UPDATE_MINUTES: {
             target: "idle",
-            actions: assign((context, event) => ({
-              minutes: new bg.Minutes(
-                isNaN(event.value)
-                  ? MinutesInput.min
-                  : event.value > MinutesInput.max
-                  ? MinutesInput.max
-                  : event.value
-              ),
-              durationInMs:
-                context.hours.toMs() +
-                new bg.Minutes(
+            actions: [
+              assign((_, event) => ({
+                minutes: new bg.Minutes(
                   isNaN(event.value)
                     ? MinutesInput.min
                     : event.value > MinutesInput.max
                     ? MinutesInput.max
                     : event.value
-                ).toMs() +
-                context.seconds.toMs(),
-            })),
+                ),
+              })),
+              "updateDurationInMs",
+            ],
           },
 
           UPDATE_SECONDS: {
             target: "idle",
-            actions: assign((context, event) => ({
-              seconds: new bg.Seconds(
-                isNaN(event.value)
-                  ? SecondsInput.min
-                  : event.value > SecondsInput.max
-                  ? SecondsInput.max
-                  : event.value
-              ),
-              durationInMs:
-                context.hours.toMs() +
-                context.minutes.toMs() +
-                new bg.Seconds(
+            actions: [
+              assign((_, event) => ({
+                seconds: new bg.Seconds(
                   isNaN(event.value)
                     ? SecondsInput.min
                     : event.value > SecondsInput.max
                     ? SecondsInput.max
                     : event.value
-                ).toMs(),
-            })),
+                ),
+              })),
+              "updateDurationInMs",
+            ],
           },
         },
       },
@@ -150,6 +129,13 @@ const timerMachine = createMachine<Context, Events>(
 
       decreaseTime: assign((context) => ({
         durationInMs: context.durationInMs - 1000,
+      })),
+
+      updateDurationInMs: assign((context) => ({
+        durationInMs:
+          context.hours.toMs() +
+          context.minutes.toMs() +
+          context.seconds.toMs(),
       })),
     },
 
