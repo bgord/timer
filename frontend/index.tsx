@@ -144,10 +144,10 @@ const timerMachine = createMachine<Context, Events>(
 );
 
 function App() {
-  const [state, send] = useMachine(timerMachine);
-
+  bg.useDisablePullToRefresh();
   const timestamp = bg.useCurrentTimestamp();
 
+  const [state, send] = useMachine(timerMachine);
   const estimatedFinishTime = bg.DateFormatter.clock(
     timestamp + state.context.durationInMs
   );
