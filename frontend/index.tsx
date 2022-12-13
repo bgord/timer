@@ -278,10 +278,12 @@ function App() {
       )}
 
       {state.value === TimerStatusEnum.working && (
-        <div>{state.context.durationInMs}</div>
+        <div data-fs="36" data-m="72" data-transform="center">
+          {bg.DateFormatter.clock(state.context.durationInMs)}
+        </div>
       )}
 
-      {state.value === TimerStatusEnum.finished && <div>finished</div>}
+      {state.value === TimerStatusEnum.finished && <div>The time is up!</div>}
     </main>
   );
 }
