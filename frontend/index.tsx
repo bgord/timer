@@ -20,10 +20,9 @@ type Context = {
   minutes: bg.Minutes;
   seconds: bg.Seconds;
   durationInMs: MilisecondType;
-  scheduledAtTimestamp: MilisecondType | null;
 };
 type Events =
-  | { type: "START"; scheduledAtTimestamp: MilisecondType }
+  | { type: "START" }
   | { type: "CLEAR" }
   | { type: "UPDATE_HOURS"; value: bg.Hours["value"] }
   | { type: "UPDATE_MINUTES"; value: bg.Minutes["value"] }
@@ -39,7 +38,6 @@ const timerMachine = createMachine<Context, Events>(
       minutes: new bg.Minutes(MinutesInput.default),
       seconds: new bg.Seconds(SecondsInput.default),
       durationInMs: 0,
-      scheduledAtTimestamp: null,
     },
     states: {
       idle: {
@@ -47,12 +45,7 @@ const timerMachine = createMachine<Context, Events>(
           START: {
             cond: "isTimeNotEmpty",
             target: "working",
-            actions: [
-              assign((_, event) => ({
-                scheduledAtTimestamp: event.scheduledAtTimestamp,
-              })),
-              "playSound",
-            ],
+            actions: "playSound",
           },
 
           CLEAR: { target: "idle", actions: "clearTimer" },
@@ -151,9 +144,10 @@ const timerMachine = createMachine<Context, Events>(
 
 function App() {
   bg.useDisablePullToRefresh();
-  const timestamp = bg.useCurrentTimestamp();
 
   const [state, send] = useMachine(timerMachine);
+  const timestamp = bg.useCurrentTimestamp();
+
   const estimatedFinishTime = bg.DateFormatter.clock(
     timestamp + state.context.durationInMs
   );
@@ -170,7 +164,7 @@ function App() {
           data-max-width="768"
           onSubmit={(event) => {
             event.preventDefault();
-            send({ type: "START", scheduledAtTimestamp: timestamp });
+            send({ type: "START" });
           }}
         >
           <div data-display="flex" data-cross="end" data-gap="12">
