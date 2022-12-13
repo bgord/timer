@@ -12,6 +12,7 @@ const SecondsInput = { default: 0, min: 0, max: 59, placeholder: "00" };
 enum TimerStatusEnum {
   idle = "idle",
   working = "working",
+  stopped = "stopped",
   finished = "finished",
 }
 
@@ -24,6 +25,8 @@ type Context = {
 type Events =
   | { type: "START" }
   | { type: "CLEAR" }
+  | { type: "STOP" }
+  | { type: "CONTINUE" }
   | { type: "UPDATE_HOURS"; value: bg.Hours["value"] }
   | { type: "UPDATE_MINUTES"; value: bg.Minutes["value"] }
   | { type: "UPDATE_SECONDS"; value: bg.Seconds["value"] }
@@ -54,7 +57,7 @@ const timerMachine = createMachine<Context, Events>(
             target: "idle",
             actions: [
               assign((_, event) => ({
-                hours: new bg.Hours(valueExtractor(event.value, HoursInput)),
+                hours: new bg.Hours(validator(event.value, HoursInput)),
               })),
               "updateDurationInMs",
             ],
@@ -64,9 +67,7 @@ const timerMachine = createMachine<Context, Events>(
             target: "idle",
             actions: [
               assign((_, event) => ({
-                minutes: new bg.Minutes(
-                  valueExtractor(event.value, MinutesInput)
-                ),
+                minutes: new bg.Minutes(validator(event.value, MinutesInput)),
               })),
               "updateDurationInMs",
             ],
@@ -76,9 +77,7 @@ const timerMachine = createMachine<Context, Events>(
             target: "idle",
             actions: [
               assign((_, event) => ({
-                seconds: new bg.Seconds(
-                  valueExtractor(event.value, SecondsInput)
-                ),
+                seconds: new bg.Seconds(validator(event.value, SecondsInput)),
               })),
               "updateDurationInMs",
             ],
@@ -91,9 +90,12 @@ const timerMachine = createMachine<Context, Events>(
         on: {
           TICK: { target: "working", actions: "decreaseTime" },
           CLEAR: { target: "idle", actions: "clearTimer" },
+          STOP: "stopped",
         },
         always: [{ target: "finished", cond: "hasTimeElapsed" }],
       },
+
+      stopped: { on: { CONTINUE: "working" } },
 
       finished: {
         onEntry: "playSound",
@@ -148,7 +150,7 @@ function App() {
   const [state, send] = useMachine(timerMachine);
   const timestamp = bg.useCurrentTimestamp();
 
-  const estimatedFinishTime = bg.DateFormatter.clock(
+  const estimatedFinishTime = bg.DateFormatter.clockLocal(
     timestamp + state.context.durationInMs
   );
 
@@ -277,21 +279,52 @@ function App() {
         </form>
       )}
 
-      {state.value === TimerStatusEnum.working && (
-        <div data-display="flex" data-main="center" data-gap="36" data-m="72">
+      {[TimerStatusEnum.working, TimerStatusEnum.stopped].includes(
+        state.value as TimerStatusEnum
+      ) && (
+        <div
+          data-display="flex"
+          data-direction="column"
+          data-cross="center"
+          data-gap="36"
+          data-m="72"
+        >
           <div data-fs="36">
-            {bg.DateFormatter.clock(state.context.durationInMs)}
+            {bg.DateFormatter.clockUTC(state.context.durationInMs)}
           </div>
 
-          <button
-            class="c-button"
-            data-variant="bare"
-            type="button"
-            data-width="100%"
-            onClick={() => send({ type: "CLEAR" })}
-          >
-            Clear
-          </button>
+          <div data-display="flex" data-gap="36">
+            {state.value === TimerStatusEnum.working && (
+              <button
+                class="c-button"
+                data-variant="secondary"
+                type="button"
+                onClick={() => send({ type: "STOP" })}
+              >
+                Stop
+              </button>
+            )}
+
+            {state.value === TimerStatusEnum.stopped && (
+              <button
+                class="c-button"
+                data-variant="secondary"
+                type="button"
+                onClick={() => send({ type: "CONTINUE" })}
+              >
+                Continue
+              </button>
+            )}
+
+            <button
+              class="c-button"
+              data-variant="bare"
+              type="button"
+              onClick={() => send({ type: "CLEAR" })}
+            >
+              Clear
+            </button>
+          </div>
         </div>
       )}
 
@@ -314,7 +347,7 @@ function App() {
   );
 }
 
-function valueExtractor(
+function validator(
   value: number,
   input: typeof HoursInput | typeof MinutesInput | typeof SecondsInput
 ) {
