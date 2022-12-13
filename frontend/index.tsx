@@ -102,7 +102,10 @@ const timerMachine = createMachine<Context, Events>(
         always: [{ target: "finished", cond: "hasTimeElapsed" }],
       },
 
-      finished: { onEntry: "playSound" },
+      finished: {
+        onEntry: "playSound",
+        on: { CLEAR: { target: "idle", actions: "clearTimer" } },
+      },
     },
   },
   {
@@ -298,7 +301,21 @@ function App() {
         </div>
       )}
 
-      {state.value === TimerStatusEnum.finished && <div>The time is up!</div>}
+      {state.value === TimerStatusEnum.finished && (
+        <div data-display="flex" data-main="center" data-gap="36" data-m="72">
+          <div data-fs="36">Time is up!</div>
+
+          <button
+            class="c-button"
+            data-variant="bare"
+            type="button"
+            data-width="100%"
+            onClick={() => send({ type: "CLEAR" })}
+          >
+            Clear
+          </button>
+        </div>
+      )}
     </main>
   );
 }
