@@ -95,7 +95,10 @@ const timerMachine = createMachine<Context, Events>(
 
       working: {
         invoke: { src: "tick" },
-        on: { TICK: { target: "working", actions: "decreaseTime" } },
+        on: {
+          TICK: { target: "working", actions: "decreaseTime" },
+          CLEAR: { target: "idle", actions: "clearTimer" },
+        },
         always: [{ target: "finished", cond: "hasTimeElapsed" }],
       },
 
@@ -278,8 +281,20 @@ function App() {
       )}
 
       {state.value === TimerStatusEnum.working && (
-        <div data-fs="36" data-m="72" data-transform="center">
-          {bg.DateFormatter.clock(state.context.durationInMs)}
+        <div data-display="flex" data-main="center" data-gap="36" data-m="72">
+          <div data-fs="36">
+            {bg.DateFormatter.clock(state.context.durationInMs)}
+          </div>
+
+          <button
+            class="c-button"
+            data-variant="bare"
+            type="button"
+            data-width="100%"
+            onClick={() => send({ type: "CLEAR" })}
+          >
+            Clear
+          </button>
         </div>
       )}
 
