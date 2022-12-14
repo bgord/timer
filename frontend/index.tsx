@@ -44,6 +44,7 @@ const timerMachine = createMachine<Context, Events>(
     },
     states: {
       idle: {
+        entry: "cleanLocalStorage",
         on: {
           START: {
             cond: "isTimeNotEmpty",
@@ -87,24 +88,39 @@ const timerMachine = createMachine<Context, Events>(
 
       working: {
         invoke: { src: "tick" },
+        entry: "syncToLocalStorage",
         on: {
           TICK: { target: "working", actions: "decreaseTime" },
           CLEAR: { target: "idle", actions: "clearTimer" },
           STOP: "stopped",
         },
-        always: [{ target: "finished", cond: "hasTimeElapsed" }],
+        always: { target: "finished", cond: "hasTimeElapsed" },
       },
 
       stopped: { on: { CONTINUE: "working" } },
 
       finished: {
-        onEntry: "playSound",
+        entry: ["playSound", "cleanLocalStorage"],
         on: { CLEAR: { target: "idle", actions: "clearTimer" } },
       },
     },
   },
   {
     actions: {
+      syncToLocalStorage: (context) => {
+        localStorage.setItem("durationInMs", String(context.durationInMs));
+        localStorage.setItem("hours", String(context.hours.value));
+        localStorage.setItem("minutes", String(context.minutes.value));
+        localStorage.setItem("seconds", String(context.seconds.value));
+      },
+
+      cleanLocalStorage: () => {
+        localStorage.removeItem("durationInMs");
+        localStorage.removeItem("hours");
+        localStorage.removeItem("minutes");
+        localStorage.removeItem("seconds");
+      },
+
       playSound: () => new Audio("/static/sound.wav").play(),
 
       clearTimer: assign((_context, _event) => ({
@@ -130,6 +146,15 @@ const timerMachine = createMachine<Context, Events>(
       tick: () => (schedule) => {
         const interval = setInterval(() => schedule("TICK"), 1000);
         return () => clearInterval(interval);
+      },
+
+      syncToLocalStorage: (context) => {
+        localStorage.setItem("durationInMs", String(context.durationInMs));
+        localStorage.setItem("hours", String(context.hours.value));
+        localStorage.setItem("minutes", String(context.minutes.value));
+        localStorage.setItem("seconds", String(context.seconds.value));
+
+        return () => {};
       },
     },
 
