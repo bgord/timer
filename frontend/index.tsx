@@ -56,32 +56,17 @@ const timerMachine = createMachine<Context, Events>(
 
           UPDATE_HOURS: {
             target: "idle",
-            actions: [
-              assign((_, event) => ({
-                hours: new bg.Hours(validator(event.value, HoursInput)),
-              })),
-              "updateDurationInMs",
-            ],
+            actions: ["updateHours", "updateDurationInMs"],
           },
 
           UPDATE_MINUTES: {
             target: "idle",
-            actions: [
-              assign((_, event) => ({
-                minutes: new bg.Minutes(validator(event.value, MinutesInput)),
-              })),
-              "updateDurationInMs",
-            ],
+            actions: ["updateMinutes", "updateDurationInMs"],
           },
 
           UPDATE_SECONDS: {
             target: "idle",
-            actions: [
-              assign((_, event) => ({
-                seconds: new bg.Seconds(validator(event.value, SecondsInput)),
-              })),
-              "updateDurationInMs",
-            ],
+            actions: ["updateSeconds", "updateDurationInMs"],
           },
         },
       },
@@ -145,6 +130,24 @@ const timerMachine = createMachine<Context, Events>(
           context.minutes.toMs() +
           context.seconds.toMs(),
       })),
+
+      updateHours: assign((_, event) =>
+        event.type === "UPDATE_HOURS"
+          ? { hours: new bg.Hours(validator(event.value, HoursInput)) }
+          : {}
+      ),
+
+      updateMinutes: assign((_, event) =>
+        event.type === "UPDATE_MINUTES"
+          ? { minutes: new bg.Minutes(validator(event.value, MinutesInput)) }
+          : {}
+      ),
+
+      updateSeconds: assign((_, event) =>
+        event.type === "UPDATE_SECONDS"
+          ? { seconds: new bg.Seconds(validator(event.value, SecondsInput)) }
+          : {}
+      ),
     },
 
     services: {
