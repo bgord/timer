@@ -97,7 +97,12 @@ const timerMachine = createMachine<Context, Events>(
         always: { target: "finished", cond: "hasTimeElapsed" },
       },
 
-      stopped: { on: { CONTINUE: "working" } },
+      stopped: {
+        on: {
+          CONTINUE: "working",
+          CLEAR: { target: "idle", actions: "clearTimer" },
+        },
+      },
 
       finished: {
         entry: ["playSound", "cleanLocalStorage"],
