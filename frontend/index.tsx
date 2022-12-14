@@ -329,7 +329,9 @@ function App() {
           </div>
 
           {state.context.durationInMs > 0 && (
-            <div>The timer will end at {estimatedFinishTime}</div>
+            <div data-transform="center">
+              The timer will end at {estimatedFinishTime}
+            </div>
           )}
         </form>
       )}
