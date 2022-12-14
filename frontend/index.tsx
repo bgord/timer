@@ -37,14 +37,27 @@ const timerMachine = createMachine<Context, Events>(
     id: "timer",
     initial: "idle",
     context: {
-      hours: new bg.Hours(HoursInput.default),
-      minutes: new bg.Minutes(MinutesInput.default),
-      seconds: new bg.Seconds(SecondsInput.default),
-      durationInMs: 0,
+      hours: new bg.Hours(
+        localStorage.getItem("hours")
+          ? Number(localStorage.getItem("hours"))
+          : HoursInput.default
+      ),
+      minutes: new bg.Minutes(
+        localStorage.getItem("minutes")
+          ? Number(localStorage.getItem("minutes"))
+          : MinutesInput.default
+      ),
+      seconds: new bg.Seconds(
+        localStorage.getItem("seconds")
+          ? Number(localStorage.getItem("seconds"))
+          : SecondsInput.default
+      ),
+      durationInMs: localStorage.getItem("durationInMs")
+        ? Number(localStorage.getItem("durationInMs"))
+        : 0,
     },
     states: {
       idle: {
-        entry: "cleanLocalStorage",
         on: {
           START: {
             cond: "isTimeNotEmpty",
@@ -52,7 +65,10 @@ const timerMachine = createMachine<Context, Events>(
             actions: "playSound",
           },
 
-          CLEAR: { target: "idle", actions: "clearTimer" },
+          CLEAR: {
+            target: "idle",
+            actions: ["cleanLocalStorage", "clearTimer"],
+          },
 
           UPDATE_HOURS: {
             target: "idle",
@@ -76,7 +92,10 @@ const timerMachine = createMachine<Context, Events>(
         entry: "syncToLocalStorage",
         on: {
           TICK: { target: "working", actions: "decreaseTime" },
-          CLEAR: { target: "idle", actions: "clearTimer" },
+          CLEAR: {
+            target: "idle",
+            actions: ["cleanLocalStorage", "clearTimer"],
+          },
           STOP: "stopped",
         },
         always: { target: "finished", cond: "hasTimeElapsed" },
@@ -85,7 +104,10 @@ const timerMachine = createMachine<Context, Events>(
       stopped: {
         on: {
           CONTINUE: "working",
-          CLEAR: { target: "idle", actions: "clearTimer" },
+          CLEAR: {
+            target: "idle",
+            actions: ["cleanLocalStorage", "clearTimer"],
+          },
         },
       },
 
