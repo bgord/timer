@@ -264,6 +264,7 @@ function App() {
                 Minutes
               </label>
               <input
+                autofocus
                 id="minutes"
                 name="minutes"
                 class="c-input"
