@@ -209,6 +209,14 @@ function App() {
     timestamp + state.context.durationInMs
   );
 
+  bg.useDocumentTitle(
+    [TimerStatusEnum.idle, TimerStatusEnum.finished].includes(
+      state.value as TimerStatusEnum
+    )
+      ? "Timer"
+      : bg.DateFormatter.clockUTC(state.context.durationInMs)
+  );
+
   return (
     <main data-display="flex" data-direction="column">
       {state.value === TimerStatusEnum.idle && (
