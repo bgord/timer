@@ -26,6 +26,7 @@ type Events =
   | { type: "START" }
   | { type: "CLEAR" }
   | { type: "STOP" }
+  | { type: "RESTART" }
   | { type: "CONTINUE" }
   | { type: "UPDATE_HOURS"; value: bg.Hours["value"] }
   | { type: "UPDATE_MINUTES"; value: bg.Minutes["value"] }
@@ -91,6 +92,10 @@ const timerMachine = createMachine<Context, Events>(
         invoke: { src: "tick" },
         entry: "syncToLocalStorage",
         on: {
+          RESTART: {
+            target: "working",
+            actions: ["playSound", "updateDurationInMs"],
+          },
           TICK: { target: "working", actions: "decreaseTime" },
           CLEAR: {
             target: "idle",
@@ -371,6 +376,17 @@ function App() {
                 onClick={() => send({ type: "STOP" })}
               >
                 Stop
+              </button>
+            )}
+
+            {state.value === TimerStatusEnum.working && (
+              <button
+                class="c-button"
+                data-variant="secondary"
+                type="button"
+                onClick={() => send({ type: "RESTART" })}
+              >
+                Restart
               </button>
             )}
 
