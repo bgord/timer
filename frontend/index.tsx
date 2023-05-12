@@ -243,6 +243,7 @@ function App() {
                 class="c-input"
                 placeholder={HoursInput.placeholder}
                 type="number"
+                inputMode="numeric"
                 required
                 value={bg.DateFormatter._pad(state.context.hours.value)}
                 onInput={(event) =>
@@ -270,6 +271,7 @@ function App() {
                 class="c-input"
                 placeholder={MinutesInput.placeholder}
                 type="number"
+                inputMode="numeric"
                 required
                 value={bg.DateFormatter._pad(state.context.minutes.value)}
                 onInput={(event) =>
@@ -296,6 +298,7 @@ function App() {
                 class="c-input"
                 placeholder={SecondsInput.placeholder}
                 type="number"
+                inputMode="numeric"
                 required
                 value={bg.DateFormatter._pad(state.context.seconds.value)}
                 onInput={(event) =>
