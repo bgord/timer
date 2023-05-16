@@ -428,17 +428,6 @@ function App() {
           </button>
         </div>
       )}
-
-      <div
-        data-position="absolute"
-        data-top="0"
-        data-right="0"
-        data-mr="6"
-        data-fs="12"
-        data-color="gray-500"
-      >
-        Cretaed in {new Date().getFullYear()}
-      </div>
     </main>
   );
 }
