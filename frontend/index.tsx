@@ -108,6 +108,10 @@ const timerMachine = createMachine<Context, Events>(
 
       stopped: {
         on: {
+          RESTART: {
+            target: "working",
+            actions: ["playSound", "updateDurationInMs"],
+          },
           CONTINUE: "working",
           CLEAR: {
             target: "idle",
@@ -359,9 +363,12 @@ function App() {
         <div
           data-display="flex"
           data-direction="column"
+          data-wrap="nowrap"
           data-cross="center"
           data-gap="36"
-          data-m="72"
+          data-m="48"
+          data-mt="72"
+          data-md-mx="24"
         >
           <div data-fs="36">
             {bg.DateFormatter.clockUTC(state.context.durationInMs)}
@@ -379,17 +386,6 @@ function App() {
               </button>
             )}
 
-            {state.value === TimerStatusEnum.working && (
-              <button
-                class="c-button"
-                data-variant="secondary"
-                type="button"
-                onClick={() => send({ type: "RESTART" })}
-              >
-                Restart
-              </button>
-            )}
-
             {state.value === TimerStatusEnum.stopped && (
               <button
                 class="c-button"
@@ -398,6 +394,18 @@ function App() {
                 onClick={() => send({ type: "CONTINUE" })}
               >
                 Continue
+              </button>
+            )}
+
+            {(state.value === TimerStatusEnum.working ||
+              state.value === TimerStatusEnum.stopped) && (
+              <button
+                class="c-button"
+                data-variant="secondary"
+                type="button"
+                onClick={() => send({ type: "RESTART" })}
+              >
+                Restart
               </button>
             )}
 
